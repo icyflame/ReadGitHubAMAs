@@ -28,4 +28,6 @@ dependencies {
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
     compile group: 'com.google.code.gson', name: 'gson', version: '2.3.1'
     compile 'com.squareup.retrofit2:converter-gson:2.0.2'
+    compile 'com.github.fiskurgit:MarkdownView:1.1.0'
+    compile 'com.github.Commit451:bypasses:1.0.3'
 }

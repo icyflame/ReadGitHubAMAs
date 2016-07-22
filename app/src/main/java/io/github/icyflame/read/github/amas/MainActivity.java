@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity
 
         mRecyclerView = ((RecyclerView) findViewById(R.id.main_recycler_view));
         mRecyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+        mRecyclerView.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL_LIST));
 
         Retrofit rf = new Retrofit.Builder()
                 .baseUrl("https://api.github.com/")

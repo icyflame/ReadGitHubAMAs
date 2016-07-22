@@ -13,6 +13,9 @@ import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import eu.fiskur.markdownview.MarkdownView;
+import in.uncod.android.bypass.Bypass;
+
 /**
  * Created by siddharth on 22/7/16.
  */
@@ -49,8 +52,9 @@ public class MainAdapter extends RecyclerView.Adapter<MainAdapter.SimpleViewHold
 
     @Override
     public void onBindViewHolder(SimpleViewHolder holder, final int position) {
-        holder.title.setText(mItems.get(position).get("title").toString());
-        holder.description.setText(mItems.get(position).get("body").toString());
+        Bypass bypass = new Bypass(mContext);
+        holder.title.setText(bypass.markdownToSpannable(mItems.get(position).get("title").getAsString()));
+        holder.description.setText(bypass.markdownToSpannable(mItems.get(position).get("body").getAsString()));
     }
 
     /*
