@@ -2,6 +2,7 @@ package io.github.icyflame.read.github.amas;
 
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
@@ -19,8 +20,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 
+import com.dpizarro.uipicker.library.picker.PickerUI;
+import com.dpizarro.uipicker.library.picker.PickerUISettings;
 import com.google.gson.JsonObject;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -64,7 +69,7 @@ public class MainActivity extends AppCompatActivity
                 b1.setTitle("Enter username of the user who's AMA you would like to check out:");
                 final EditText input = new EditText(MainActivity.this);
                 b1.setView(input);
-                b1.setPositiveButton("OKAY", new DialogInterface.OnClickListener() {
+                b1.setPositiveButton("UPDATE", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         mUser = input.getText().toString();
@@ -203,7 +208,7 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void onResponse(Call<List<JsonObject>> call, Response<List<JsonObject>> response) {
                         Log.d(TAG, "List Issue Comments: onResponse: " + response.body());
-                        for (JsonObject comment :
+                        for (final JsonObject comment :
                                 response.body()) {
                             if (comment.get("user").getAsJsonObject().get("login").getAsString().equals(mUser)) {
                                 String answer = comment.get("body").getAsString();
@@ -211,6 +216,16 @@ public class MainActivity extends AppCompatActivity
                                 b1.setTitle(String.format(Locale.US, "Issue #%s on %s/%s", number, mUser, mRepo));
 
                                 b1.setMessage(new Bypass(MainActivity.this).markdownToSpannable(answer));
+
+                                b1.setPositiveButton("SHARE", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                        Intent send = new Intent(Intent.ACTION_SEND);
+                                        send.putExtra(Intent.EXTRA_TEXT, comment.get("html_url").getAsString());
+                                        send.setType("text/plain");
+                                        startActivity(send);
+                                    }
+                                });
 
                                 b1.setNegativeButton("CLOSE", new DialogInterface.OnClickListener() {
                                     @Override
