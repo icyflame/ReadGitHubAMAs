@@ -1,7 +1,9 @@
 package io.github.icyflame.read.github.amas;
 
+import android.app.Activity;
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,10 +27,17 @@ import in.uncod.android.bypass.Bypass;
  */
 public class MainAdapter extends RecyclerView.Adapter<MainAdapter.SimpleViewHolder> {
     private static final int COUNT = 100;
+    public static final String TAG = "adapter-main";
 
     private final Context mContext;
-    private final List<JsonObject> mItems;
+    private List<JsonObject> mItems;
     private int mCurrentItemId = 0;
+
+    public interface parentProvidesOnClickListener {
+        View.OnClickListener setListenerForClick(JsonObject item);
+    }
+
+    parentProvidesOnClickListener mParentCallback;
 
     public static class SimpleViewHolder extends RecyclerView.ViewHolder {
         public final TextView title, description;
@@ -40,9 +49,21 @@ public class MainAdapter extends RecyclerView.Adapter<MainAdapter.SimpleViewHold
         }
     }
 
-    public MainAdapter(Context context, List<JsonObject> items) {
+    public MainAdapter(Context context, List<JsonObject> items, Activity parent) {
         mContext = context;
         mItems = items;
+
+        try {
+            mParentCallback = ((parentProvidesOnClickListener) parent);
+        } catch (Exception err) {
+            Log.e(TAG, "MainAdapter: " + parent.toString() +
+                    " must implement the parentProvidesOnClickListener interface", err);
+        }
+    }
+
+    public void replaceDataset(List<JsonObject> items) {
+        mItems = items;
+        notifyDataSetChanged();
     }
 
     public SimpleViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -55,6 +76,9 @@ public class MainAdapter extends RecyclerView.Adapter<MainAdapter.SimpleViewHold
         Bypass bypass = new Bypass(mContext);
         holder.title.setText(bypass.markdownToSpannable(mItems.get(position).get("title").getAsString()));
         holder.description.setText(bypass.markdownToSpannable(mItems.get(position).get("body").getAsString()));
+        View.OnClickListener listener = mParentCallback.setListenerForClick(mItems.get(position));
+        holder.title.setOnClickListener(listener);
+        holder.description.setOnClickListener(listener);
     }
 
     /*

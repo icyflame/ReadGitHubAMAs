@@ -1,8 +1,10 @@
 package io.github.icyflame.read.github.amas;
 
+import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -15,14 +17,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.EditText;
 
 import com.google.gson.JsonObject;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.List;
+import java.util.Locale;
 
+import in.uncod.android.bypass.Bypass;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -30,11 +32,22 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener {
+        implements NavigationView.OnNavigationItemSelectedListener, MainAdapter.parentProvidesOnClickListener {
 
-    public static final String TAG = "MainActivity";
+    public static final String TAG = "activity-main";
+    private static final String ANSWER_NOT_FOUND_REASONS = "Although this issue was closed, the repository " +
+            "owner hasn't commented on the issue.";
+    private static final String ANSWER_NOT_FOUND = "Answer from the repository owner not found!";
+    private static final CharSequence FETCHING_ISSUES = "Fetching all closed issues for this repository";
     private RecyclerView mRecyclerView;
     private MainAdapter mAdapter;
+    private Retrofit mRetrofitInstance;
+    private GitHubAPI mApiInstance;
+    private String mUser = "sindresorhus";
+    private String mRepo = "ama";
+    private CharSequence FETCHING_COMMENTS = "Fetching the answer from GitHub";
+    private CharSequence FETCHING_DESCRIPTION = "Hold on!";
+    private ProgressDialog mWaiting;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,8 +60,24 @@ public class MainActivity extends AppCompatActivity
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                AlertDialog.Builder b1 = new AlertDialog.Builder(MainActivity.this);
+                b1.setTitle("Enter username of the user who's AMA you would like to check out:");
+                final EditText input = new EditText(MainActivity.this);
+                b1.setView(input);
+                b1.setPositiveButton("OKAY", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        mUser = input.getText().toString();
+                        updateAdapterListing();
+                    }
+                });
+                b1.setNegativeButton("CLOSE", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }
+                });
+                b1.show();
             }
         });
 
@@ -60,6 +89,50 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        mRetrofitInstance = new Retrofit.Builder()
+                .baseUrl("https://api.github.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+    }
+
+    private void updateAdapterListing() {
+        mWaiting = ProgressDialog.show(
+                MainActivity.this,
+                FETCHING_ISSUES,
+                FETCHING_DESCRIPTION,
+                false, false
+        );
+        mApiInstance.listIssues(mUser, mRepo).enqueue(new Callback<List<JsonObject>>() {
+            @Override
+            public void onResponse(Call<List<JsonObject>> call, Response<List<JsonObject>> response) {
+                Log.d(TAG, "List Issues: onResponse: " + response.body());
+
+                if (mAdapter == null) {
+                    mAdapter = new MainAdapter(MainActivity.this, response.body(), MainActivity.this);
+                    mRecyclerView.setAdapter(mAdapter);
+                } else {
+                    mAdapter.replaceDataset(response.body());
+                }
+
+                mWaiting.dismiss();
+            }
+
+            @Override
+            public void onFailure(Call<List<JsonObject>> call, Throwable t) {
+                mWaiting.dismiss();
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("ERROR!")
+                        .setMessage("There was an error fetching data from the GitHub API. Try again later.")
+                        .setNegativeButton("CLOSE", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                MainActivity.this.finish();
+                            }
+                        })
+                        .show();
+            }
+        });
     }
 
     @Override
@@ -70,28 +143,9 @@ public class MainActivity extends AppCompatActivity
         mRecyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
         mRecyclerView.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL_LIST));
 
-        Retrofit rf = new Retrofit.Builder()
-                .baseUrl("https://api.github.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
+        mApiInstance = mRetrofitInstance.create(GitHubAPI.class);
 
-        GitHubAPI api = rf.create(GitHubAPI.class);
-
-        api.listIssues("sindresorhus", "ama").enqueue(new Callback<List<JsonObject>>() {
-            @Override
-            public void onResponse(Call<List<JsonObject>> call, Response<List<JsonObject>> response) {
-                Log.d(TAG, "onResponse: " + response.body());
-
-                mAdapter = new MainAdapter(MainActivity.this, response.body());
-
-                mRecyclerView.setAdapter(mAdapter);
-            }
-
-            @Override
-            public void onFailure(Call<List<JsonObject>> call, Throwable t) {
-
-            }
-        });
+        updateAdapterListing();
     }
 
     @Override
@@ -129,5 +183,70 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         return false;
+    }
+
+    @Override
+    public View.OnClickListener setListenerForClick(final JsonObject item) {
+        return new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                final String number = item.get("number").getAsString();
+
+                final ProgressDialog progressDialog = ProgressDialog.show(
+                        MainActivity.this,
+                        FETCHING_COMMENTS,
+                        FETCHING_DESCRIPTION,
+                        false, false
+                );
+
+                mApiInstance.listIssueComments(mUser, mRepo, number).enqueue(new Callback<List<JsonObject>>() {
+                    @Override
+                    public void onResponse(Call<List<JsonObject>> call, Response<List<JsonObject>> response) {
+                        Log.d(TAG, "List Issue Comments: onResponse: " + response.body());
+                        for (JsonObject comment :
+                                response.body()) {
+                            if (comment.get("user").getAsJsonObject().get("login").getAsString().equals(mUser)) {
+                                String answer = comment.get("body").getAsString();
+                                AlertDialog.Builder b1 = new AlertDialog.Builder(MainActivity.this);
+                                b1.setTitle(String.format(Locale.US, "Issue #%s on %s/%s", number, mUser, mRepo));
+
+                                b1.setMessage(new Bypass(MainActivity.this).markdownToSpannable(answer));
+
+                                b1.setNegativeButton("CLOSE", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialogInterface, int i) {
+                                        // USER CLOSED THIS DIALOG!
+                                    }
+                                });
+                                progressDialog.dismiss();
+                                b1.show();
+                                break;
+                            }
+                        }
+
+                        if (progressDialog.isShowing()) {
+                            // THERE WAS NO ANSWER FOUND!
+                            progressDialog.dismiss();
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle(ANSWER_NOT_FOUND)
+                                    .setMessage(ANSWER_NOT_FOUND_REASONS)
+                                    .setNegativeButton("OKAY", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialogInterface, int i) {
+
+                                        }
+                                    })
+                                    .show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<JsonObject>> call, Throwable t) {
+
+                    }
+                });
+
+            }
+        };
     }
 }

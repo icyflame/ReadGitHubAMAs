@@ -17,4 +17,7 @@ import retrofit2.http.Path;
 public interface GitHubAPI {
     @GET("repos/{user}/{repo}/issues?state=closed")
     Call<List<JsonObject>> listIssues(@Path("user") String user, @Path("repo") String repo);
+
+    @GET("repos/{user}/{repo}/issues/{number}/comments")
+    Call<List<JsonObject>> listIssueComments(@Path("user") String user, @Path("repo") String repo, @Path("number") String number);
 }
