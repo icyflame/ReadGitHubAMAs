@@ -18,7 +18,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ListAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.dpizarro.uipicker.library.picker.PickerUI;
 import com.dpizarro.uipicker.library.picker.PickerUISettings;
@@ -65,9 +72,32 @@ public class MainActivity extends AppCompatActivity
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
+                ListView LV = new ListView(MainActivity.this);
+                List<String> listOfUserNames = new ArrayList<String>();
+                listOfUserNames.add("sindresorhus");
+                listOfUserNames.add("holman");
+                listOfUserNames.add("passy");
+                listOfUserNames.add("mdo");
+
+                ArrayAdapter<String> simpleAdapter = new ArrayAdapter<String>(MainActivity.this, R.layout.subview_list_picker, listOfUserNames);
+                LV.setAdapter(simpleAdapter);
+
                 AlertDialog.Builder b1 = new AlertDialog.Builder(MainActivity.this);
                 b1.setTitle("Enter username of the user who's AMA you would like to check out:");
+
                 final EditText input = new EditText(MainActivity.this);
+
+                b1.setView(LV);
+                LV.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                        Toast.makeText(MainActivity.this, String.format("%d, %s", i, ((TextView) view).getText().toString()), Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                /*
+
                 b1.setView(input);
                 b1.setPositiveButton("UPDATE", new DialogInterface.OnClickListener() {
                     @Override
@@ -76,6 +106,8 @@ public class MainActivity extends AppCompatActivity
                         updateAdapterListing();
                     }
                 });
+
+                */
                 b1.setNegativeButton("CLOSE", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
